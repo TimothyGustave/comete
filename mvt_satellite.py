@@ -42,10 +42,12 @@ def A(q):
     # J'ai pas encore trouvé de manière élégante de faire ça
     A = np.zeros((4, 4))
     nr = (q[0]**2 + q[1]**2)**(3/2)
-    A[0, 2] = -m * G / nr
-    A[1, 3] = -m * G / nr
-    A[2, 0] = 1
-    A[3, 1] = 1
+    A[0, 2] = 1
+    A[1, 3] = 1
+    A[2, 0] = -m * G / nr
+    A[3, 1] = -m * G / nr
+    
+    print(A)
     
     return A
 
