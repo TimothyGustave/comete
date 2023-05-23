@@ -115,14 +115,7 @@ if __name__ == "__main__":
         subdivision, approx_euler = schema_euler_explicite(T, n, ys_init[0], f)
         _, approx_semi_implicite = schema_semi_implicite(T, n, ys_init[0], g)
         
-        print("La longueur: ", len(y_init * len(subdivision)), len(subdivision))
-        
-        # energie_exacte = E(subdivision, y_init * (len(subdivision) / 4)) # l'énergie est constante, et donc égale au conditions initiales
-        energie_exacte = [E(t, y_init) for t in subdivision]
-        
-        print("La 2eme longueur: ", len(energie_exacte))
-        print(energie_exacte)
-        
+        energie_exacte = E(subdivision, y_init * (len(subdivision) / 2)) # l'énergie est constante, et donc égale au conditions initiales
         energie_approx_euler = E(subdivision, approx_euler)
         energie_approx_semi_implicite = E(subdivision, approx_semi_implicite)
         
