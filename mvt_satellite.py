@@ -42,12 +42,14 @@ def A(q):
     # J'ai pas encore trouvé de manière élégante de faire ça
     A = np.zeros((4, 4))
     nr = (q[0]**2 + q[1]**2)**(3/2)
+    
+    # if nr == 0:
+    #     print(q)
+    
     A[0, 2] = 1
     A[1, 3] = 1
     A[2, 0] = -m * G / nr
     A[3, 1] = -m * G / nr
-    
-    print(A)
     
     return A
 
@@ -57,8 +59,11 @@ if __name__ == "__main__":
     G = 1 # Constante gravitationnelle
     T = 100
     N = np.array([100, 1000, 5000, 50000])
-    y_init = np.array([1., 1., 0., 1.])
+    ys_init = np.array([[1., 1., 0., 1.],
+                       [1., 1., 0.5, 1.],
+                       [1., 1., -1., 1.]])
     
+        
     # On considère l'équation Y'=f(t, Y1, Y2) où Y1, Y2 \in \R^2 et Y = (y, y') et on cherche à trouver y \in \R^2
     f = lambda t, q: np.array([q[2], q[3], 
         -m * G * (q[0] / ((q[0]**2 + q[1]**2)**(3/2))), 
@@ -66,66 +71,107 @@ if __name__ == "__main__":
     
     g = lambda t, q: A(q) # C'est moche il faut essayer de trouver quelques choses de mieux
     
-    subdivision, approx_euler = schema_euler_explicite(T, N[-1], y_init, f)
-    _, approx_semi_implicite = schema_semi_implicite(T, N[-1], y_init, g)
+    E = lambda t, q: (m/2) * (q[2] ** 2 + q[3] ** 2) - G * m ** 2 / ((q[0] ** 2 + q[1]** 2)**(1/2))
+    
     
     # Représentations graphiques
+    fig, ax = plt.subplots(1, 3)
+    titre = ["Ellipse", "Parabole", "Hyperbole"]
+    
+    for i in range(3):
+        
+        y_init = ys_init[i]
+        
+        subdivision, approx_euler = schema_euler_explicite(T, N[-1], y_init, f)
+        _, approx_semi_implicite = schema_semi_implicite(T, N[-1], y_init, g)
+    
+        # Graphique de la trajctoires de la comète
+        # On va par la suite tracer toutes les situations possibles des coniques.
+        ax[i].plot(approx_euler[0], approx_euler[1], label="euler explicite")
+        ax[i].plot(approx_semi_implicite[0], approx_semi_implicite[1], label="semi_implicite")
+        ax[i].set_title(titre[i])
+        ax[i].set_xlabel("position sur l'axe q1")
+        ax[i].set_ylabel("position sur l'axe q2")
+        ax[i].legend()
+        
+    print(approx_semi_implicite)
+        
+    filepath_trajectoires = './Results/trajectoires_comete_coniquesT={}N={}'.format(T, N[-1])
+    
+    plt.tight_layout()
+    plt.savefig(filepath_trajectoires)
+    print("Le graphique a été sauvegardé dans ", filepath_trajectoires)
+    plt.show()
+    
+    # Calcul de l'erreur
     fig, ax = plt.subplots(3)
     
-    # Graphique de la trajctoires de la comète
-    # On va par la suite tracer toutes les situations possibles des coniques.
+    filepath_energie = "./Results/energie"
+    
+    erreur_euler = []
+    erreur_semi_implicite = []
+    
+    for n in N:
+        subdivision, approx_euler = schema_euler_explicite(T, n, ys_init[0], f)
+        _, approx_semi_implicite = schema_semi_implicite(T, n, ys_init[0], g)
+        
+        print("La longueur: ", len(y_init * len(subdivision)), len(subdivision))
+        
+        # energie_exacte = E(subdivision, y_init * (len(subdivision) / 4)) # l'énergie est constante, et donc égale au conditions initiales
+        energie_exacte = [E(t, y_init) for t in subdivision]
+        
+        print("La 2eme longueur: ", len(energie_exacte))
+        print(energie_exacte)
+        
+        energie_approx_euler = E(subdivision, approx_euler)
+        energie_approx_semi_implicite = E(subdivision, approx_semi_implicite)
+        
+        erreur_euler.append(erreur(energie_exacte, energie_approx_euler))
+        erreur_semi_implicite.append(erreur(energie_exacte, energie_approx_semi_implicite))
+        
+        ax[1].plot(subdivision, E(subdivision, approx_euler), label="N={}".format(n))
+        if n == 50000:
+            ax[2].plot(subdivision, E(subdivision, approx_semi_implicite), label="N={}".format(n))
+    
+    # Tracer de l'énérgie en fonction du temps
     ax[0].plot(approx_euler[0], approx_euler[1], label="euler explicite")
     ax[0].plot(approx_semi_implicite[0], approx_semi_implicite[1], label="semi_implicite")
     ax[0].set_title("Trajectoires de la comète")
-    ax[0].set_xlabel("position sur l'axe q1")
-    ax[0].set_ylabel("position sur l'axe q2")
+    ax[0].set_xlabel("q1")
+    ax[0].set_ylabel("q2")
     ax[0].legend()
-    
-    # Graphique de la vitesse de la comète en fonction du temps
-    ax[1].plot(subdivision, approx_euler[2], label="vitesse q1 euler")
-    ax[1].plot(subdivision, approx_euler[3], label="vitesse q2 euler")
-    ax[1].set_title("Vitesse de la comète en fonction du temps")
+    ax[1].set_title("Énergie pour le schéma d'Euler Explicite")
     ax[1].set_xlabel("temps")
-    ax[1].set_ylabel("vitesse")
+    ax[1].set_ylabel("énergie")
     ax[1].legend()
-    
-    # Équation de l'énergie de la comète; q \in \R^4
-    E = lambda t, q: (m/2) * (q[2] ** 2 + q[3] ** 2) - G * m ** 2 / ((q[0] ** 2 + q[1]** 2)**(1/2))
-    ax[2].plot(subdivision, E(subdivision, approx_euler), label="Euler")
-    ax[2].set_title("Énergie de la comète en fonction du temps")
-    ax[2].set_xlabel("temps")
-    ax[2].set_ylabel("énergie")
-    ax[2].legend()
-    
-    # Calcul de l'erreur
-    erreur_euler = []
-    
-    for n in N:
-        subdivision, approx_euler = schema_euler_explicite(T, n, y_init, f)
-        energie_exacte = E(subdivision, y_init * len(subdivision)) # l'énergie est constante, et donc égale au conditions initiales
-        erreur_euler.append(erreur(energie_exacte, E(subdivision, approx_euler)))
-        
-        ax[2].plot(subdivision, E(subdivision, approx_euler), label="N={}".format(n))
-    
-    filepath = './Results/trajectoires_cometeT={}N={}'.format(T, N[-1])
-    
-    ax[2].set_title("Énergie de la comète en fonction de différents N")
+    ax[2].set_title("Énergie pour le schéma semi-implicite")
     ax[2].set_xlabel("temps")
     ax[2].set_ylabel("énergie")
     ax[2].legend()
     
     plt.tight_layout()
-    plt.savefig(filepath)
-    print("Le graphique a été sauvegardé dans ", filepath)
+    plt.savefig(filepath_energie)
+    print("La figure a été sauvé a l'emplacement : ", filepath_energie)
     plt.show()
     
-    print("Ordre de convergence : ", stats.linregress(np.log(N), np.log(erreur_euler)).slope)
+    print(erreur_semi_implicite)
     
-    # plt.plot(0,0)
+    # Tracer de l'erreur et de l'ordre de convergence
+    regression_lineaire_euler = stats.linregress(np.log(N), np.log(erreur_euler))
+    regression_lineaire_semi_implicite = stats.linregress(np.log(N), np.log(erreur_semi_implicite))
+    ordre_convergence_euler = regression_lineaire_euler.slope
+    ordre_convergence_semi_implicite = regression_lineaire_semi_implicite.slope
+    # ordonne_origine_euler = regression_lineaire_euler
+    print(regression_lineaire_euler)
+    print("Ordre de convergence du schéma d'euler : ", ordre_convergence_euler)
+    print("Ordre de convergence du schéma semi implicite : ", ordre_convergence_semi_implicite)
+    
     plt.plot(np.log(N), np.log(erreur_euler), label="Erreur euler")
+    plt.plot(np.log(N), np.log(erreur_semi_implicite), label="Erreur semi implicite")
     plt.title("Erreur")
     plt.xlabel("log(N)")
     plt.ylabel("log(erreur)")
     plt.legend()
     plt.savefig("./Results/erreur.png")
+    print("La figure a été sauvée à l'emplacement : ", "./Results/erreur.png")
     plt.show()
